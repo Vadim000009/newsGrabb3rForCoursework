@@ -1,5 +1,6 @@
 import selenium
 import re
+from progress.bar import IncrementalBar
 from lxml import etree
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
@@ -9,11 +10,26 @@ from selenium.webdriver import ActionChains
 def initDriverChrome():
     chromedriver = r"C:\Users\1\PycharmProjects\newsGrabb3rForCoursework\chromedriver.exe"
     options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    # Отключаем ругательства в PowerShell и всяких синезубах
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
     driver = webdriver.Chrome(executable_path=chromedriver, options=options)
+
     return driver
 
 
 if __name__ == "__main__":
+    print("Введите количество статей, которое необходимо собрать")
+    while True:
+        try:
+            counterOfArticles = int(input())
+            if counterOfArticles <= 0:
+                print("Введите пожалуйства ПОЛОЖИТЕЛЬНОЕ число")
+            else:
+                break
+        except ValueError or KeyboardInterrupt:
+            print("Введите пожалуйства число")
+
     driver = initDriverChrome()
     driver.get("https://txt.newsru.com/allnews/")
     driver.implicitly_wait(1)
@@ -21,7 +37,7 @@ if __name__ == "__main__":
     button = driver.find_element_by_class_name("arch-arrows-link-l")
 
     parseRefCounter, scrollCounter, newsTemp, tags, newsRef, namesNews = 0, 0, [], [], [], []
-    counter, counterOfArticles = 0, 1000
+    counter = 0
 
     xmlData = etree.Element("doc")
 
@@ -46,7 +62,9 @@ if __name__ == "__main__":
     tagsXmlData.attrib['type'] = "str"
     tagsXmlData.attrib['auto'] = "true"
 
-    print("counter ref")
+    counterBar = IncrementalBar("Сбор ссылок", max=counterOfArticles,
+                         suffix='%(percent)d%% статей %(remaining)s осталось,'
+                                ' Секунд затрачено - %(elapsed)s')
     while counter != counterOfArticles:
         for news in driver.find_element_by_class_name("content-main")\
                 .find_elements_by_class_name("inner-news-item"):
@@ -57,9 +75,9 @@ if __name__ == "__main__":
                         .find_element_by_tag_name("a").text)
             namesNews.append(news.find_element_by_class_name("index-news-title").text)
             counter = counter + 1
-            print(counter)
-        print("fin")
+            counterBar.next()
         if counter > counterOfArticles:
+            counterBar.finish()
             break
         try:
             ActionChains(driver).move_to_element(button).click().perform()
@@ -67,10 +85,13 @@ if __name__ == "__main__":
             button = driver.find_element_by_class_name("arch-arrows-link-l")
             ActionChains(driver).move_to_element(button).click().perform()
 
-    print("counter Ready")
+    print("\n\nСсылки собраны! Приступаем к сбору статей.\n\n")
+    articleBar = IncrementalBar("Сбор статей", max=len(newsRef),
+                          suffix='Собрано %(index)s статей и %(remaining)s осталось,'
+                                ' Секунд затрачено - %(elapsed)s')
     for ref in newsRef:
         driver.get(ref)
-        # driver.implicitly_wait(1)
+        driver.implicitly_wait(1)
         if re.search(r'inopressa', str(ref)):
             for bodyText in driver.find_element_by_class_name("body")\
                     .find_elements_by_class_name("articPar"):
@@ -82,6 +103,7 @@ if __name__ == "__main__":
         elif re.search(r'meddaily', str(ref)):
             for bodyText in driver.find_elements_by_class_name("topic_text"):
                 newsTemp.append(bodyText.text)
+
         unionText = ''.join(newsTemp)
         titleXmlData.text = namesNews[parseRefCounter]
         textXmlData.text = etree.CDATA(unionText)
@@ -89,7 +111,9 @@ if __name__ == "__main__":
         xmlTree = etree.ElementTree(xmlData)
         xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
                       , xml_declaration=True, pretty_print=True)
-        print(parseRefCounter)
+        articleBar.next()
         parseRefCounter = parseRefCounter + 1
         newsTemp.clear()
+    articleBar.finish()
     driver.close()
+    exit(0)
