@@ -1,5 +1,6 @@
 import selenium
 import re
+import os
 from progress.bar import IncrementalBar
 from lxml import etree
 from selenium import webdriver
@@ -10,15 +11,16 @@ from selenium.webdriver import ActionChains
 def initDriverChrome():
     chromedriver = r"C:\Users\1\PycharmProjects\newsGrabb3rForCoursework\chromedriver.exe"
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    options.add_argument("--disable-extensions").add_argument("--disable-gpu")\
+        .add_argument("--headless").add_experimental_option("excludeSwitches", ["enable-logging"])
     # Отключаем ругательства в PowerShell и всяких синезубах
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
     driver = webdriver.Chrome(executable_path=chromedriver, options=options)
 
     return driver
 
 
 if __name__ == "__main__":
+    os.system("cls")
     print("Введите количество статей, которое необходимо собрать")
     while True:
         try:
@@ -36,8 +38,8 @@ if __name__ == "__main__":
 
     button = driver.find_element_by_class_name("arch-arrows-link-l")
 
-    parseRefCounter, scrollCounter, newsTemp, tags, newsRef, namesNews = 0, 0, [], [], [], []
-    counter = 0
+    newsTemp, tags, newsRef, namesNews = [], [], [], []
+    counter, parseRefCounter, scrollCounter, date = 0, 0, 0, str
 
     xmlData = etree.Element("doc")
 
@@ -56,6 +58,11 @@ if __name__ == "__main__":
     textXmlData.attrib['verify'] = "true"
     textXmlData.attrib['type'] = "str"
     textXmlData.attrib['auto'] = "true"
+
+    dateXmlData = etree.SubElement(xmlData, "date")
+    dateXmlData.attrib['verify'] = "true"
+    dateXmlData.attrib['type'] = "str"
+    dateXmlData.attrib['auto'] = "true"
 
     tagsXmlData = etree.SubElement(xmlData, "tags")
     tagsXmlData.attrib['verify'] = "true"
@@ -93,14 +100,19 @@ if __name__ == "__main__":
         driver.get(ref)
         driver.implicitly_wait(1)
         if re.search(r'inopressa', str(ref)):
+            date = driver.find_element_by_class_name("maincaption").text
             for bodyText in driver.find_element_by_class_name("body")\
                     .find_elements_by_class_name("articPar"):
                 newsTemp.append(bodyText.text)
         elif re.search(r'newsru', str(ref)):
+            date = driver.find_element_by_class_name("article-date").text
+            date = re.search(r".\d+.*?,", str(date)).group().replace(",", "")
             for bodyText in driver.find_element_by_class_name("article-text")\
                     .find_elements_by_tag_name("p"):
                 newsTemp.append(bodyText.text)
         elif re.search(r'meddaily', str(ref)):
+            date = driver.find_element_by_class_name("topic_date").text
+            str(date) + "."
             for bodyText in driver.find_elements_by_class_name("topic_text"):
                 newsTemp.append(bodyText.text)
 
@@ -108,6 +120,7 @@ if __name__ == "__main__":
         titleXmlData.text = namesNews[parseRefCounter]
         textXmlData.text = etree.CDATA(unionText)
         tagsXmlData.text = tags[parseRefCounter]
+        dateXmlData.text = date
         xmlTree = etree.ElementTree(xmlData)
         xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
                       , xml_declaration=True, pretty_print=True)
@@ -115,5 +128,7 @@ if __name__ == "__main__":
         parseRefCounter = parseRefCounter + 1
         newsTemp.clear()
     articleBar.finish()
+    print("\nСбор завершён! Все собранные статьи храняться в папке articles "
+          "в директории запуска данной программы")
     driver.close()
     exit(0)
