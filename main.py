@@ -11,8 +11,10 @@ from selenium.webdriver import ActionChains
 def initDriverChrome():
     chromedriver = r"C:\Users\1\PycharmProjects\newsGrabb3rForCoursework\chromedriver.exe"
     options = webdriver.ChromeOptions()
-    options.add_argument("--disable-extensions").add_argument("--disable-gpu")\
-        .add_argument("--headless").add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--headless")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
     # Отключаем ругательства в PowerShell и всяких синезубах
     driver = webdriver.Chrome(executable_path=chromedriver, options=options)
 
