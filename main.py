@@ -13,7 +13,7 @@ def initDriverChrome():
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-gpu")
-    options.add_argument("--headless")
+    #options.add_argument("--headless")
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     # Отключаем ругательства в PowerShell и всяких синезубах
     driver = webdriver.Chrome(executable_path=chromedriver, options=options)
