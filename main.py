@@ -9,16 +9,19 @@ from selenium.webdriver import ActionChains
 
 
 def initDriverChrome():
-    chromedriver = r"C:\Users\1\PycharmProjects\newsGrabb3rForCoursework\chromedriver.exe"
-    options = webdriver.ChromeOptions()
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-gpu")
-    #options.add_argument("--headless")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    # Отключаем ругательства в PowerShell и всяких синезубах
-    driver = webdriver.Chrome(executable_path=chromedriver, options=options)
-
-    return driver
+    try:
+        chromedriver = r".\chromedriver.exe"
+        options = webdriver.ChromeOptions()
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-gpu")
+        # options.add_argument("--headless") # Некорректно работает
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        # Отключаем ругательства в PowerShell о всяких синезубах
+        driver = webdriver.Chrome(executable_path=chromedriver, options=options)
+        return driver
+    except selenium.common.exceptions.SessionNotCreatedException as error:
+        print(error)    # На всякий пожарный оповестим о несоответствии версий
+        exit(0)
 
 
 if __name__ == "__main__":
@@ -41,7 +44,7 @@ if __name__ == "__main__":
     button = driver.find_element_by_class_name("arch-arrows-link-l")
 
     newsTemp, tags, newsRef, namesNews = [], [], [], []
-    counter, parseRefCounter, scrollCounter, date = 0, 0, 0, str
+    counter, parseRefCounter, scrollCounter, date = 0, 0, 0, ''
 
     xmlData = etree.Element("doc")
 
