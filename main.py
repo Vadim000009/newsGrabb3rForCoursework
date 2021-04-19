@@ -1,8 +1,9 @@
 import selenium
 import re
 import os
-from progress.bar import IncrementalBar
-from lxml import etree
+from sys import exit  # Потому что .exe файл не знает откуда взять имя exit ¯\_(ツ)_/¯
+from progress.bar import IncrementalBar  # Красивый прогресс бар в Гадюке
+from lxml import etree  # Работа с XML
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import ActionChains
@@ -10,6 +11,10 @@ from selenium.webdriver import ActionChains
 
 def initDriverChrome():
     try:
+        if not os.path.exists(r".\chromedriver.exe"):
+            print("Файл chromedriver.exe не находится в директории с программой!\n"
+                  "Запуск программы невозможен! Выход из программы...\n")
+            exit(0)
         chromedriver = r".\chromedriver.exe"
         options = webdriver.ChromeOptions()
         options.add_argument("--disable-extensions")
@@ -20,7 +25,8 @@ def initDriverChrome():
         driver = webdriver.Chrome(executable_path=chromedriver, options=options)
         return driver
     except selenium.common.exceptions.SessionNotCreatedException as error:
-        print(error)    # На всякий пожарный оповестим о несоответствии версий
+        print("Запуск невозможен! Ошибка:\n")
+        print(error)  # На всякий пожарный оповестим о несоответствии версий
         exit(0)
 
 
@@ -38,9 +44,11 @@ if __name__ == "__main__":
             print("Введите пожалуйства число")
 
     driver = initDriverChrome()
+    if not os.path.isdir("articles"):
+        os.mkdir("articles")
     driver.get("https://txt.newsru.com/allnews/")
-    driver.implicitly_wait(1)
 
+    # Жмём на кнопку "на день назад"
     button = driver.find_element_by_class_name("arch-arrows-link-l")
 
     newsTemp, tags, newsRef, namesNews = [], [], [], []
@@ -75,10 +83,11 @@ if __name__ == "__main__":
     tagsXmlData.attrib['auto'] = "true"
 
     counterBar = IncrementalBar("Сбор ссылок", max=counterOfArticles,
-                         suffix='%(percent)d%% статей %(remaining)s осталось,'
-                                ' Секунд затрачено - %(elapsed)s')
+                                suffix='%(percent)d%% статей %(remaining)s осталось,'
+                                       ' Секунд затрачено - %(elapsed)s')
     while counter != counterOfArticles:
-        for news in driver.find_element_by_class_name("content-main")\
+        driver.implicitly_wait(1)
+        for news in driver.find_element_by_class_name("content-main") \
                 .find_elements_by_class_name("inner-news-item"):
             if counter == counterOfArticles:
                 break
@@ -99,20 +108,20 @@ if __name__ == "__main__":
 
     print("\n\nСсылки собраны! Приступаем к сбору статей.\n\n")
     articleBar = IncrementalBar("Сбор статей", max=len(newsRef),
-                          suffix='Собрано %(index)s статей и %(remaining)s осталось,'
-                                ' Секунд затрачено - %(elapsed)s')
+                                suffix='Собрано %(index)s статей и %(remaining)s осталось,'
+                                       ' Секунд затрачено - %(elapsed)s')
     for ref in newsRef:
         driver.get(ref)
         driver.implicitly_wait(1)
         if re.search(r'inopressa', str(ref)):
             date = driver.find_element_by_class_name("maincaption").text
-            for bodyText in driver.find_element_by_class_name("body")\
+            for bodyText in driver.find_element_by_class_name("body") \
                     .find_elements_by_class_name("articPar"):
                 newsTemp.append(bodyText.text)
         elif re.search(r'newsru', str(ref)):
             date = driver.find_element_by_class_name("article-date").text
             date = re.search(r".\d+.*?,", str(date)).group().replace(",", "")
-            for bodyText in driver.find_element_by_class_name("article-text")\
+            for bodyText in driver.find_element_by_class_name("article-text") \
                     .find_elements_by_tag_name("p"):
                 newsTemp.append(bodyText.text)
         elif re.search(r'meddaily', str(ref)):
