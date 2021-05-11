@@ -75,7 +75,7 @@ if __name__ == "__main__":
     dateXmlData.attrib['type'] = "str"
     dateXmlData.attrib['auto'] = "true"
 
-    categoryXmlData = etree.SubElement(xmlData, "tags")
+    categoryXmlData = etree.SubElement(xmlData, "category")
     categoryXmlData.attrib['verify'] = "true"
     categoryXmlData.attrib['type'] = "str"
     categoryXmlData.attrib['auto'] = "true"
