@@ -51,16 +51,14 @@ if __name__ == "__main__":
     # Жмём на кнопку "на день назад"
     button = driver.find_element_by_class_name("arch-arrows-link-l")
 
-    newsTemp, tags, newsRef, namesNews = [], [], [], []
+    newsTemp, category, newsRef, namesNews = [], [], [], []
     counter, parseRefCounter, scrollCounter, date = 0, 0, 0, ''
 
     xmlData = etree.Element("doc")
-
-    categoryXmlData = etree.SubElement(xmlData, "category")
-    categoryXmlData.text = "Все новости"
-    categoryXmlData.attrib['verify'] = "true"
-    categoryXmlData.attrib['type'] = "str"
-    categoryXmlData.attrib['auto'] = "true"
+    originalURLData = etree.SubElement(xmlData, "URL")
+    originalURLData.attrib['verify'] = "true"
+    originalURLData.attrib['type'] = "str"
+    originalURLData.attrib['auto'] = "true"
 
     titleXmlData = etree.SubElement(xmlData, "title")
     titleXmlData.attrib['verify'] = "true"
@@ -77,10 +75,10 @@ if __name__ == "__main__":
     dateXmlData.attrib['type'] = "str"
     dateXmlData.attrib['auto'] = "true"
 
-    tagsXmlData = etree.SubElement(xmlData, "tags")
-    tagsXmlData.attrib['verify'] = "true"
-    tagsXmlData.attrib['type'] = "str"
-    tagsXmlData.attrib['auto'] = "true"
+    categoryXmlData = etree.SubElement(xmlData, "tags")
+    categoryXmlData.attrib['verify'] = "true"
+    categoryXmlData.attrib['type'] = "str"
+    categoryXmlData.attrib['auto'] = "true"
 
     counterBar = IncrementalBar("Сбор ссылок", max=counterOfArticles,
                                 suffix='%(percent)d%% статей %(remaining)s осталось,'
@@ -92,8 +90,8 @@ if __name__ == "__main__":
             if counter == counterOfArticles:
                 break
             newsRef.append(news.find_element_by_tag_name("a").get_attribute("href"))
-            tags.append(news.find_element_by_class_name("index-news-date")
-                        .find_element_by_tag_name("a").text)
+            category.append(news.find_element_by_class_name("index-news-date") \
+                            .find_element_by_tag_name("a").text)
             namesNews.append(news.find_element_by_class_name("index-news-title").text)
             counter = counter + 1
             counterBar.next()
@@ -131,9 +129,10 @@ if __name__ == "__main__":
                 newsTemp.append(bodyText.text)
 
         unionText = ''.join(newsTemp)
+        originalURLData.text = str(ref)
         titleXmlData.text = namesNews[parseRefCounter]
         textXmlData.text = etree.CDATA(unionText)
-        tagsXmlData.text = tags[parseRefCounter]
+        categoryXmlData.text = category[parseRefCounter]
         dateXmlData.text = date
         xmlTree = etree.ElementTree(xmlData)
         xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
