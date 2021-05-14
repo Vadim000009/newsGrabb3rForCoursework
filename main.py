@@ -116,6 +116,7 @@ if __name__ == "__main__":
     for ref in newsRef:
         try:
             driver.get(ref)
+            articleBar.next()
             ex = ref
             driver.implicitly_wait(1)
             if re.search(r'inopressa', str(ref)):
@@ -150,21 +151,22 @@ if __name__ == "__main__":
             titleXmlData.text = namesNews[parseRefCounter]
             textXmlData.text = etree.CDATA(unionText)
             categoryXmlData.text = category[parseRefCounter]
-            tagsXmlData.text = str(tags)[1:-1]
+            tagsXmlData.text = str(tags)[1:-1].replace("'", "")
             dateXmlData.text = date
             xmlTree = etree.ElementTree(xmlData)
             xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
                           , xml_declaration=True, pretty_print=True)
-            articleBar.next()
             parseRefCounter = parseRefCounter + 1
             newsTemp.clear()
             tags = []
+            print(parseRefCounter)
         except selenium.common.exceptions.NoSuchElementException:
             print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
                   "\nПродолжаю работу")
             parseRefCounter = parseRefCounter + 1
+            print(str(parseRefCounter) + "sss")
             newsTemp.clear()
-            category, namesNews, tags = [], [], []
+            tags, date = [], ""
     articleBar.finish()
     print("\nСбор завершён! Все собранные статьи храняться в папке articles "
           "в директории запуска данной программы")
