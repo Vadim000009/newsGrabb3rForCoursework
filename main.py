@@ -47,12 +47,12 @@ if __name__ == "__main__":
     if not os.path.isdir("articles"):
         os.mkdir("articles")
     driver.get("https://txt.newsru.com/allnews/")
-
+    driver.implicitly_wait(2)
     # Жмём на кнопку "на день назад"
     button = driver.find_element_by_class_name("arch-arrows-link-l")
 
-    newsTemp, category, newsRef, namesNews = [], [], [], []
-    counter, parseRefCounter, scrollCounter, date = 0, 0, 0, ''
+    newsTemp, category, newsRef, namesNews, tags = [], [], [], [], []
+    counter, parseRefCounter, scrollCounter, date, ex = 0, 0, 0, '', ''
 
     xmlData = etree.Element("doc")
     originalURLData = etree.SubElement(xmlData, "URL")
@@ -80,8 +80,13 @@ if __name__ == "__main__":
     categoryXmlData.attrib['type'] = "str"
     categoryXmlData.attrib['auto'] = "true"
 
-    counterBar = IncrementalBar("Сбор ссылок", max=counterOfArticles,
-                                suffix='%(percent)d%% статей %(remaining)s осталось,'
+    tagsXmlData = etree.SubElement(xmlData, "tags")
+    tagsXmlData.attrib['verify'] = "true"
+    tagsXmlData.attrib['type'] = "str"
+    tagsXmlData.attrib['auto'] = "true"
+
+    counterBar = IncrementalBar("Сбор ссылок! ", max=counterOfArticles,
+                                suffix='%(percent)d%% собрано и %(remaining)s осталось,'
                                        ' Секунд затрачено - %(elapsed)s')
     while counter != counterOfArticles:
         driver.implicitly_wait(1)
@@ -109,37 +114,54 @@ if __name__ == "__main__":
                                 suffix='Собрано %(index)s статей и %(remaining)s осталось,'
                                        ' Секунд затрачено - %(elapsed)s')
     for ref in newsRef:
-        driver.get(ref)
-        driver.implicitly_wait(1)
-        if re.search(r'inopressa', str(ref)):
-            date = driver.find_element_by_class_name("maincaption").text
-            for bodyText in driver.find_element_by_class_name("body") \
-                    .find_elements_by_class_name("articPar"):
-                newsTemp.append(bodyText.text)
-        elif re.search(r'newsru', str(ref)):
-            date = driver.find_element_by_class_name("article-date").text
-            date = re.search(r".\d+.*?,", str(date)).group().replace(",", "")
-            for bodyText in driver.find_element_by_class_name("article-text") \
-                    .find_elements_by_tag_name("p"):
-                newsTemp.append(bodyText.text)
-        elif re.search(r'meddaily', str(ref)):
-            date = driver.find_element_by_class_name("topic_date").text
-            str(date) + "."
-            for bodyText in driver.find_elements_by_class_name("topic_text"):
-                newsTemp.append(bodyText.text)
-
-        unionText = ''.join(newsTemp)
-        originalURLData.text = str(ref)
-        titleXmlData.text = namesNews[parseRefCounter]
-        textXmlData.text = etree.CDATA(unionText)
-        categoryXmlData.text = category[parseRefCounter]
-        dateXmlData.text = date
-        xmlTree = etree.ElementTree(xmlData)
-        xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
-                      , xml_declaration=True, pretty_print=True)
-        articleBar.next()
-        parseRefCounter = parseRefCounter + 1
-        newsTemp.clear()
+        try:
+            driver.get(ref)
+            ex = ref
+            driver.implicitly_wait(1)
+            if re.search(r'inopressa', str(ref)):
+                tags = str("[" + driver.find_element_by_xpath("/html/body/table/tbody/tr[2]/td/table[2]/"
+                                                        "tbody/tr/td[1]/div[3]/div[2]/h3/a")
+                           .text + "]").replace("|", ",")
+                date = driver.find_element_by_class_name("maincaption").text
+                for bodyText in driver.find_element_by_class_name("body") \
+                        .find_elements_by_class_name("articPar"):
+                    newsTemp.append(bodyText.text)
+            elif re.search(r'newsru', str(ref)):
+                date = driver.find_element_by_class_name("article-date").text
+                date = re.search(r".\d+.*?,", str(date)).group().replace(",", "")
+                for bodyText in driver.find_element_by_class_name("article-text") \
+                        .find_elements_by_tag_name("p"):
+                    newsTemp.append(bodyText.text)
+                for tag in driver.find_elements_by_class_name("article-tags-list"):
+                    tags.append(tag.text)
+                tags.pop(0)
+                tags.pop(0)
+                tags.pop(0)
+            elif re.search(r'meddaily', str(ref)):
+                tags = str(driver.find_element_by_xpath("//*[@id='main']/tbody/tr/td[1]/table/"
+                                                        "tbody/tr/td[2]/div/div[1]/div[2]/div[6]")
+                           .text).replace("Темы:", "")
+                date = driver.find_element_by_class_name("topic_date").text
+                str(date) + "."
+                for bodyText in driver.find_elements_by_class_name("topic_text"):
+                    newsTemp.append(bodyText.text)
+            unionText = ''.join(newsTemp)
+            originalURLData.text = str(ref)
+            titleXmlData.text = namesNews[parseRefCounter]
+            textXmlData.text = etree.CDATA(unionText)
+            categoryXmlData.text = category[parseRefCounter]
+            tagsXmlData.text = str(tags)[1:-1]
+            dateXmlData.text = date
+            xmlTree = etree.ElementTree(xmlData)
+            xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
+                          , xml_declaration=True, pretty_print=True)
+            articleBar.next()
+            parseRefCounter = parseRefCounter + 1
+            newsTemp.clear()
+            tags = []
+        except selenium.common.exceptions.NoSuchElementException:
+            print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
+                  "\nПродолжаю работу")
     articleBar.finish()
     print("\nСбор завершён! Все собранные статьи храняться в папке articles "
           "в директории запуска данной программы")
