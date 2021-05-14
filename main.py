@@ -162,6 +162,7 @@ if __name__ == "__main__":
         except selenium.common.exceptions.NoSuchElementException:
             print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
                   "\nПродолжаю работу")
+            newsTemp, category, newsRef, namesNews, tags = [], [], [], [], []
     articleBar.finish()
     print("\nСбор завершён! Все собранные статьи храняться в папке articles "
           "в директории запуска данной программы")
