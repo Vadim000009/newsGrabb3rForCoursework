@@ -120,16 +120,15 @@ if __name__ == "__main__":
             ex = ref
             driver.implicitly_wait(1)
             if re.search(r'inopressa', str(ref)):
-                tags = str("[" + driver.find_element_by_xpath("/html/body/table/tbody/tr[2]/td/table[2]/"
-                                                        "tbody/tr/td[1]/div[3]/div[2]/h3/a")
+                tags = str("[" + driver.find_element_by_class_name("topic").find_element_by_tag_name("a")
                            .text + "]").replace("|", ",")
-                date = driver.find_element_by_class_name("maincaption").text
+                date = str(driver.find_element_by_class_name("maincaption").text).replace(" г.", "")
                 for bodyText in driver.find_element_by_class_name("body") \
                         .find_elements_by_class_name("articPar"):
                     newsTemp.append(bodyText.text)
             elif re.search(r'newsru', str(ref)):
                 date = driver.find_element_by_class_name("article-date").text
-                date = re.search(r".\d+.*?,", str(date)).group().replace(",", "")
+                date = re.search(r".\d+.*?,", str(date)).group().replace(",", "").replace(" г.", "")[1:]
                 for bodyText in driver.find_element_by_class_name("article-text") \
                         .find_elements_by_tag_name("p"):
                     newsTemp.append(bodyText.text)
@@ -139,11 +138,11 @@ if __name__ == "__main__":
                 tags.pop(0)
                 tags.pop(0)
             elif re.search(r'meddaily', str(ref)):
-                tags = str(driver.find_element_by_xpath("//*[@id='main']/tbody/tr/td[1]/table/"
-                                                        "tbody/tr/td[2]/div/div[1]/div[2]/div[6]")
-                           .text).replace("Темы:", "")
+                for tag in driver.find_elements_by_class_name("topic_rubric"):
+                    tags.append(tag.text)
+                tags.pop(0)
+                tags = str(tags).replace("Темы:", "")
                 date = driver.find_element_by_class_name("topic_date").text
-                str(date) + "."
                 for bodyText in driver.find_elements_by_class_name("topic_text"):
                     newsTemp.append(bodyText.text)
             unionText = ''.join(newsTemp)
@@ -159,12 +158,10 @@ if __name__ == "__main__":
             parseRefCounter = parseRefCounter + 1
             newsTemp.clear()
             tags = []
-            print(parseRefCounter)
         except selenium.common.exceptions.NoSuchElementException:
             print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
                   "\nПродолжаю работу")
             parseRefCounter = parseRefCounter + 1
-            print(str(parseRefCounter) + "sss")
             newsTemp.clear()
             tags, date = [], ""
     articleBar.finish()
