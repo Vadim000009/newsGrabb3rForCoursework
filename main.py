@@ -52,7 +52,7 @@ if __name__ == "__main__":
     driver = initDriverChrome()
     if not os.path.isdir("articles"):
         os.mkdir("articles")
-    driver.get("https://txt.newsru.com/allnews/")
+    driver.get("https://txt.newsru.com/allnews1/")
     driver.implicitly_wait(2)
     try:
         # Жмём на кнопку "на день назад"
@@ -161,4 +161,5 @@ if __name__ == "__main__":
         print("О неееееееет, что-то пошло не так. Видимо, они знают, что я робот :с\n"
               "Или сайт упал и скайнет победил С:\nПрограмма будет завершена")
     driver.close()
+    driver.quit()
     exit(0)
