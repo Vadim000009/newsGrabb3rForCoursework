@@ -9,6 +9,12 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import ActionChains
 
 
+def attribAdd(name):
+    name.attrib['verify'] = "true"
+    name.attrib['type'] = "str"
+    name.attrib['auto'] = "true"
+
+
 def initDriverChrome():
     try:
         if not os.path.exists(r".\chromedriver.exe"):
@@ -48,124 +54,111 @@ if __name__ == "__main__":
         os.mkdir("articles")
     driver.get("https://txt.newsru.com/allnews/")
     driver.implicitly_wait(2)
-    # Жмём на кнопку "на день назад"
-    button = driver.find_element_by_class_name("arch-arrows-link-l")
+    try:
+        # Жмём на кнопку "на день назад"
+        button = driver.find_element_by_class_name("arch-arrows-link-l")
 
-    newsTemp, category, newsRef, namesNews, tags = [], [], [], [], []
-    counter, parseRefCounter, scrollCounter, date, ex = 0, 0, 0, '', ''
+        newsTemp, category, newsRef, namesNews, tags = [], [], [], [], []
+        counter, parseRefCounter, scrollCounter, date, ex = 0, 0, 0, '', ''
 
-    xmlData = etree.Element("doc")
-    originalURLData = etree.SubElement(xmlData, "URL")
-    originalURLData.attrib['verify'] = "true"
-    originalURLData.attrib['type'] = "str"
-    originalURLData.attrib['auto'] = "true"
+        xmlData = etree.Element("doc")
+        originalURLData = etree.SubElement(xmlData, "URL")
+        attribAdd(originalURLData)
+        titleXmlData = etree.SubElement(xmlData, "title")
+        attribAdd(titleXmlData)
+        textXmlData = etree.SubElement(xmlData, "text")
+        attribAdd(textXmlData)
+        dateXmlData = etree.SubElement(xmlData, "date")
+        attribAdd(dateXmlData)
+        categoryXmlData = etree.SubElement(xmlData, "category")
+        attribAdd(categoryXmlData)
+        tagsXmlData = etree.SubElement(xmlData, "tags")
+        attribAdd(tagsXmlData)
 
-    titleXmlData = etree.SubElement(xmlData, "title")
-    titleXmlData.attrib['verify'] = "true"
-    titleXmlData.attrib['type'] = "str"
-    titleXmlData.attrib['auto'] = "true"
-
-    textXmlData = etree.SubElement(xmlData, "text")
-    textXmlData.attrib['verify'] = "true"
-    textXmlData.attrib['type'] = "str"
-    textXmlData.attrib['auto'] = "true"
-
-    dateXmlData = etree.SubElement(xmlData, "date")
-    dateXmlData.attrib['verify'] = "true"
-    dateXmlData.attrib['type'] = "str"
-    dateXmlData.attrib['auto'] = "true"
-
-    categoryXmlData = etree.SubElement(xmlData, "category")
-    categoryXmlData.attrib['verify'] = "true"
-    categoryXmlData.attrib['type'] = "str"
-    categoryXmlData.attrib['auto'] = "true"
-
-    tagsXmlData = etree.SubElement(xmlData, "tags")
-    tagsXmlData.attrib['verify'] = "true"
-    tagsXmlData.attrib['type'] = "str"
-    tagsXmlData.attrib['auto'] = "true"
-
-    counterBar = IncrementalBar("Сбор ссылок! ", max=counterOfArticles,
-                                suffix='%(percent)d%% собрано и %(remaining)s осталось,'
-                                       ' Секунд затрачено - %(elapsed)s')
-    while counter != counterOfArticles:
-        driver.implicitly_wait(1)
-        for news in driver.find_element_by_class_name("content-main") \
-                .find_elements_by_class_name("inner-news-item"):
-            if counter == counterOfArticles:
-                break
-            newsRef.append(news.find_element_by_tag_name("a").get_attribute("href"))
-            category.append(news.find_element_by_class_name("index-news-date") \
-                            .find_element_by_tag_name("a").text)
-            namesNews.append(news.find_element_by_class_name("index-news-title").text)
-            counter = counter + 1
-            counterBar.next()
-        if counter > counterOfArticles:
-            counterBar.finish()
-            break
-        try:
-            ActionChains(driver).move_to_element(button).click().perform()
-        except selenium.common.exceptions.StaleElementReferenceException:
-            button = driver.find_element_by_class_name("arch-arrows-link-l")
-            ActionChains(driver).move_to_element(button).click().perform()
-
-    print("\n\nСсылки собраны! Приступаем к сбору статей.\n\n")
-    articleBar = IncrementalBar("Сбор статей", max=len(newsRef),
-                                suffix='Собрано %(index)s статей и %(remaining)s осталось,'
-                                       ' Секунд затрачено - %(elapsed)s')
-    for ref in newsRef:
-        try:
-            driver.get(ref)
-            articleBar.next()
-            ex = ref
+        counterBar = IncrementalBar("Сбор ссылок! ", max=counterOfArticles,
+                                    suffix='%(percent)d%% собрано и %(remaining)s осталось,'
+                                           ' Секунд затрачено - %(elapsed)s')
+        while counter != counterOfArticles:
             driver.implicitly_wait(1)
-            if re.search(r'inopressa', str(ref)):
-                tags = str("[" + driver.find_element_by_class_name("topic").find_element_by_tag_name("a")
-                           .text + "]").replace("|", ",")
-                date = str(driver.find_element_by_class_name("maincaption").text).replace(" г.", "")
-                for bodyText in driver.find_element_by_class_name("body") \
-                        .find_elements_by_class_name("articPar"):
-                    newsTemp.append(bodyText.text)
-            elif re.search(r'newsru', str(ref)):
-                date = driver.find_element_by_class_name("article-date").text
-                date = re.search(r".\d+.*?,", str(date)).group().replace(",", "").replace(" г.", "")[1:]
-                for bodyText in driver.find_element_by_class_name("article-text") \
-                        .find_elements_by_tag_name("p"):
-                    newsTemp.append(bodyText.text)
-                for tag in driver.find_elements_by_class_name("article-tags-list"):
-                    tags.append(tag.text)
-                tags.pop(0)
-                tags.pop(0)
-                tags.pop(0)
-            elif re.search(r'meddaily', str(ref)):
-                for tag in driver.find_elements_by_class_name("topic_rubric"):
-                    tags.append(tag.text)
-                tags.pop(0)
-                tags = str(tags).replace("Темы:", "")
-                date = driver.find_element_by_class_name("topic_date").text
-                for bodyText in driver.find_elements_by_class_name("topic_text"):
-                    newsTemp.append(bodyText.text)
-            unionText = ''.join(newsTemp)
-            originalURLData.text = str(ref)
-            titleXmlData.text = namesNews[parseRefCounter]
-            textXmlData.text = etree.CDATA(unionText)
-            categoryXmlData.text = category[parseRefCounter]
-            tagsXmlData.text = str(tags)[1:-1].replace("'", "")
-            dateXmlData.text = date
-            xmlTree = etree.ElementTree(xmlData)
-            xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
-                          , xml_declaration=True, pretty_print=True)
-            parseRefCounter = parseRefCounter + 1
-            newsTemp.clear()
-            tags = []
-        except selenium.common.exceptions.NoSuchElementException:
-            print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
-                  "\nПродолжаю работу")
-            parseRefCounter = parseRefCounter + 1
-            newsTemp.clear()
-            tags, date = [], ""
-    articleBar.finish()
-    print("\nСбор завершён! Все собранные статьи храняться в папке articles "
-          "в директории запуска данной программы")
+            for news in driver.find_element_by_class_name("content-main") \
+                    .find_elements_by_class_name("inner-news-item"):
+                if counter == counterOfArticles:
+                    break
+                newsRef.append(news.find_element_by_tag_name("a").get_attribute("href"))
+                category.append(news.find_element_by_class_name("index-news-date") \
+                                .find_element_by_tag_name("a").text)
+                namesNews.append(news.find_element_by_class_name("index-news-title").text)
+                counter = counter + 1
+                counterBar.next()
+            if counter > counterOfArticles:
+                counterBar.finish()
+                break
+            try:
+                ActionChains(driver).move_to_element(button).click().perform()
+            except selenium.common.exceptions.StaleElementReferenceException:
+                button = driver.find_element_by_class_name("arch-arrows-link-l")
+                ActionChains(driver).move_to_element(button).click().perform()
+
+        print("\n\nСсылки собраны! Приступаем к сбору статей.\n\n")
+        articleBar = IncrementalBar("Сбор статей", max=len(newsRef),
+                                    suffix='Собрано %(index)s статей и %(remaining)s осталось,'
+                                           ' Секунд затрачено - %(elapsed)s')
+        for ref in newsRef:
+            try:
+                driver.get(ref)
+                articleBar.next()
+                ex = ref
+                driver.implicitly_wait(1)
+                if re.search(r'inopressa', str(ref)):
+                    tags = str("[" + driver.find_element_by_class_name("topic").find_element_by_tag_name("a")
+                               .text + "]").replace("|", ",")
+                    date = str(driver.find_element_by_class_name("maincaption").text).replace(" г.", "")
+                    for bodyText in driver.find_element_by_class_name("body") \
+                            .find_elements_by_class_name("articPar"):
+                        newsTemp.append(bodyText.text)
+                elif re.search(r'newsru', str(ref)):
+                    date = driver.find_element_by_class_name("article-date").text
+                    date = re.search(r".\d+.*?,", str(date)).group().replace(",", "").replace(" г.", "")[1:]
+                    for bodyText in driver.find_element_by_class_name("article-text") \
+                            .find_elements_by_tag_name("p"):
+                        newsTemp.append(bodyText.text)
+                    for tag in driver.find_elements_by_class_name("article-tags-list"):
+                        tags.append(tag.text)
+                    tags.remove('Каталог NEWSru.com')
+                    tags.remove('Информационные интернет-ресурсы')
+                    tags.remove('Досье NEWSru.com')
+                elif re.search(r'meddaily', str(ref)):
+                    for tag in driver.find_elements_by_class_name("topic_rubric"):
+                        tags.append(tag.text)
+                    tags.pop(0)
+                    tags = str(tags).replace("Темы:", "")
+                    date = driver.find_element_by_class_name("topic_date").text
+                    for bodyText in driver.find_elements_by_class_name("topic_text"):
+                        newsTemp.append(bodyText.text)
+                unionText = ''.join(newsTemp)
+                originalURLData.text = str(ref)
+                titleXmlData.text = namesNews[parseRefCounter]
+                textXmlData.text = etree.CDATA(unionText)
+                categoryXmlData.text = category[parseRefCounter]
+                tagsXmlData.text = str(tags)[1:-1].replace("' ", "").replace("'", "")
+                dateXmlData.text = date
+                xmlTree = etree.ElementTree(xmlData)
+                xmlTree.write(".\\articles\\output " + str(parseRefCounter) + ".xml", encoding="utf-8"
+                              , xml_declaration=True, pretty_print=True)
+                parseRefCounter = parseRefCounter + 1
+                newsTemp.clear()
+                tags = []
+            except selenium.common.exceptions.NoSuchElementException:
+                print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
+                      "\nПродолжаю работу")
+                parseRefCounter = parseRefCounter + 1
+                newsTemp.clear()
+                tags, date = [], ""
+        articleBar.finish()
+        print("\nСбор завершён! Все собранные статьи храняться в папке articles "
+              "в директории запуска данной программы")
+    except selenium.common.exceptions.NoSuchElementException:
+        print("О неееееееет, что-то пошло не так. Видимо, они знают, что я робот :с\n"
+              "Или сайт упал и скайнет победил С:\nПрограмма будет завершена")
     driver.close()
     exit(0)
