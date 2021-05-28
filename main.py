@@ -52,7 +52,7 @@ if __name__ == "__main__":
     driver = initDriverChrome()
     if not os.path.isdir("articles"):
         os.mkdir("articles")
-    driver.get("https://txt.newsru.com/allnews1/")
+    driver.get("https://txt.newsru.com/allnews/")
     driver.implicitly_wait(2)
     try:
         # Жмём на кнопку "на день назад"
