@@ -25,9 +25,16 @@ def initDriverChrome():
         options = webdriver.ChromeOptions()
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-gpu")
-        # options.add_argument("--headless") # Некорректно работает
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        options.add_argument("start-maximized")
+        options.add_argument("enable-automation")
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-browser-side-navigation")
+        options.page_load_strategy = 'none'
         # Отключаем ругательства в PowerShell о всяких синезубах
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
         driver = webdriver.Chrome(executable_path=chromedriver, options=options)
         return driver
     except selenium.common.exceptions.SessionNotCreatedException as error:
@@ -36,6 +43,8 @@ def initDriverChrome():
         exit(0)
 
 
+# TODO: Дописать многопоток
+# TODO: Может стоит... Картинки тоже брать на борт?
 if __name__ == "__main__":
     os.system("cls")
     print("Введите количество статей, которое необходимо собрать")
@@ -46,14 +55,15 @@ if __name__ == "__main__":
                 print("Введите пожалуйства ПОЛОЖИТЕЛЬНОЕ число")
             else:
                 break
-        except ValueError or KeyboardInterrupt:
+        except (ValueError, KeyboardInterrupt):
             print("Введите пожалуйства число")
 
     driver = initDriverChrome()
     if not os.path.isdir("articles"):
-        os.mkdir("articles")
-    driver.get("https://txt.newsru.com/allnews/")
-    driver.implicitly_wait(2)
+        os.mkdir("articles1")
+    driver.get("https://txt.newsru.com/allnews/30may2017/") # 30may2021
+    driver.implicitly_wait(1)
+    driver.set_page_load_timeout(30)
     try:
         # Жмём на кнопку "на день назад"
         button = driver.find_element_by_class_name("arch-arrows-link-l")
@@ -74,12 +84,11 @@ if __name__ == "__main__":
         attribAdd(categoryXmlData)
         tagsXmlData = etree.SubElement(xmlData, "tags")
         attribAdd(tagsXmlData)
-
+        print("Для экстренного завершения программы нажмите \'ctrl + c\'")
         counterBar = IncrementalBar("Сбор ссылок! ", max=counterOfArticles,
                                     suffix='%(percent)d%% собрано и %(remaining)s осталось,'
                                            ' Секунд затрачено - %(elapsed)s')
         while counter != counterOfArticles:
-            driver.implicitly_wait(1)
             for news in driver.find_element_by_class_name("content-main") \
                     .find_elements_by_class_name("inner-news-item"):
                 if counter == counterOfArticles:
@@ -108,7 +117,6 @@ if __name__ == "__main__":
                 driver.get(ref)
                 articleBar.next()
                 ex = ref
-                driver.implicitly_wait(1)
                 if re.search(r'inopressa', str(ref)):
                     tags = str("[" + driver.find_element_by_class_name("topic").find_element_by_tag_name("a")
                                .text + "]").replace("|", ",")
@@ -124,9 +132,12 @@ if __name__ == "__main__":
                         newsTemp.append(bodyText.text)
                     for tag in driver.find_elements_by_class_name("article-tags-list"):
                         tags.append(tag.text)
-                    tags.remove('Каталог NEWSru.com')
-                    tags.remove('Информационные интернет-ресурсы')
-                    tags.remove('Досье NEWSru.com')
+                    try:
+                        tags.remove('Каталог NEWSru.com')
+                        tags.remove('Информационные интернет-ресурсы')
+                        tags.remove('Досье NEWSru.com')
+                    except ValueError:
+                        tags = []
                 elif re.search(r'meddaily', str(ref)):
                     for tag in driver.find_elements_by_class_name("topic_rubric"):
                         tags.append(tag.text)
@@ -148,9 +159,10 @@ if __name__ == "__main__":
                 parseRefCounter = parseRefCounter + 1
                 newsTemp.clear()
                 tags = []
-            except selenium.common.exceptions.NoSuchElementException:
-                print("Удивительно, но статьи по данной ссылке не существует\n" + str(ex) +
-                      "\nПродолжаю работу")
+            except (selenium.common.exceptions.NoSuchElementException, IndexError,
+                    selenium.common.exceptions.TimeoutException,
+                    selenium.common.exceptions.StaleElementReferenceException):
+                print("\nОшибка! Ссылка:" + str(ex))
                 parseRefCounter = parseRefCounter + 1
                 newsTemp.clear()
                 tags, date = [], ""
